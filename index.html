@@ -485,16 +485,17 @@
         bgMusic.pause()
       }
 
+      function createBigBall() {
+        bigBall = {
+          x: 80,
+          y: -60,
+          radius: 60,
+          speed: 0.59,
+        }
+        bigBallExist = true
+      }
+
       function startGame() {
-        setTimeout(() => {
-          bigBall = {
-            x: 80,
-            y: -60,
-            radius: 60,
-            speed: 0.5,
-          }
-          bigBallExist = true
-        }, 40000) // 50 seconds
         document.getElementById("startScreen").style.display = "none"
         gameOverScreen.style.display = "none"
         bgMusic.currentTime = 0
@@ -575,8 +576,6 @@
       document.addEventListener("keydown", (e) => (keys[e.key] = true))
       document.addEventListener("keyup", (e) => (keys[e.key] = false))
 
-      
-
       let isTouching = false
       canvas.addEventListener("touchstart", function (e) {
         const touch = e.touches[0]
@@ -606,7 +605,6 @@
         isTouching = false
       })
 
-
       function movePlayer() {
         if (!gameOver) {
           if (keys["ArrowLeft"] && player.x > 0) player.x -= player.speed
@@ -615,6 +613,14 @@
         }
         requestAnimationFrame(movePlayer)
       }
+
+      document.addEventListener("keydown", function (event) {
+        // For example, activate bigBall when the 'B' key is pressed
+        if (event.key === "b" || event.key === "B") {
+          bigBallActive = true
+          createBigBall()
+        }
+      })
 
       movePlayer()
     </script>
