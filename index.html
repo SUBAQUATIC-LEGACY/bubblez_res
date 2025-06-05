@@ -174,7 +174,7 @@
       </div>
       <div id="gameOverScreen">
         <div id="gameOverContent">
-          <h1>LEGACY</h1>          
+          <h1>LEGACY</h1>
           <div id="imageWrapper">
             <img
               id="gameOverImage"
@@ -312,6 +312,7 @@
       let bigBall = null
       let bigBallActive = false
       let bigBallCaught = false
+      let bigBallExist = false
 
       function resizeCanvas() {
         canvas.width = baseWidth
@@ -341,13 +342,18 @@
         const margin = 10
         const x = margin + Math.random() * (canvas.width - 2 * margin)
         const isRed = Math.random() < 0.15
+        const radius = 15 + Math.random() * 10
+        const speed = isRed ? 1 : 1 + Math.random() * 1.2
+        const y = bigBallActive ? canvas.height + radius : 0 - radius // start from bottom if bigBall is active
+
         bubbles.push({
           x: x,
-          y: 0,
-          radius: 15 + Math.random() * 10,
-          speed: isRed ? 1 : 1 + Math.random() * 1.2,
+          y: y,
+          radius: radius,
+          speed: speed,
           opacity: 0.7 + Math.random() * 0.3,
           red: isRed,
+          goingUp: bigBallActive, // direction flag
         })
       }
 
@@ -371,28 +377,39 @@
         }
 
         bubbles.forEach((bubble, index) => {
-          bubble.y += bubble.speed * bubbleSpeedMultiplier
-          if (bubble.y > canvas.height) {
-            bubbles.splice(index, 1)
-            lives--
-            playLifeLostSound()
-            if (lives <= 0) {
-              triggerGameOver()
+          if (!bubble.goingUp) {
+            bubble.y += bubble.speed * bubbleSpeedMultiplier
+            bubble.goingUp = bigBallActive
+            if (bubble.y > canvas.height) {
+              bubbles.splice(index, 1)
+              lives--
+              playLifeLostSound()
+              if (lives <= 0) {
+                triggerGameOver()
+              }
             }
+          } else {
+            bubble.y -= bubble.speed * bubbleSpeedMultiplier
           }
         })
 
-        bubbles = bubbles.filter((bubble) => {
-          const hit =
-            bubble.x > player.x &&
-            bubble.x < player.x + player.width &&
-            bubble.y + bubble.radius > player.y &&
-            bubble.y < player.y + player.height
-          if (hit) score += bubble.red ? 10 : 1
-          return !hit
-        })
-        if (bigBallActive && bigBall && !bigBallCaught) {
+        if (!bigBallActive) {
+          bubbles = bubbles.filter((bubble) => {
+            const hit =
+              bubble.x > player.x &&
+              bubble.x < player.x + player.width &&
+              bubble.y + bubble.radius > player.y &&
+              bubble.y < player.y + player.height
+            if (hit) score += bubble.red ? 10 : 1
+            return !hit
+          })
+        }
+        if (bigBallExist && bigBall && !bigBallCaught) {
           bigBall.y += bigBall.speed
+          bigBall.radius += 0.05
+          if (bigBall.y + bigBall.radius >= 80) {
+            bigBallActive = true
+          }
 
           // Check collision with player
           const dx =
@@ -401,7 +418,7 @@
             bigBall.y + bigBall.radius / 2 - (player.y + player.height / 2)
           const distance = Math.sqrt(dx * dx + dy * dy)
 
-          if (distance < bigBall.radius + player.width / 8) {
+          if (distance < bigBall.radius) {
             bigBallCaught = true
             triggerGameOver() // Replace with your game over logic
           }
@@ -444,7 +461,7 @@
           for (let i = 0; i < lives; i++) {
             ctx.drawImage(whaleImg, 10 + i * 40, 40, 35, 35)
           }
-          if (bigBallActive && bigBall && !bigBallCaught) {
+          if (bigBallExist && bigBall && !bigBallCaught) {
             ctx.drawImage(
               yellowBubbleImage,
               bigBall.x,
@@ -470,13 +487,13 @@
       function startGame() {
         setTimeout(() => {
           bigBall = {
-            x: Math.random() * (canvas.width - 60),
+            x: 80,
             y: -60,
-            radius: 80,
+            radius: 20,
             speed: 0.5,
           }
-          bigBallActive = true
-        }, 40000) // 50 seconds
+          bigBallExist = true
+        }, 10000) // 50 seconds
         document.getElementById("startScreen").style.display = "none"
         gameOverScreen.style.display = "none"
         bgMusic.currentTime = 0
@@ -557,6 +574,8 @@
       document.addEventListener("keydown", (e) => (keys[e.key] = true))
       document.addEventListener("keyup", (e) => (keys[e.key] = false))
 
+      
+
       let isTouching = false
       canvas.addEventListener("touchstart", function (e) {
         const touch = e.touches[0]
@@ -585,6 +604,7 @@
       canvas.addEventListener("touchend", function () {
         isTouching = false
       })
+
 
       function movePlayer() {
         if (!gameOver) {
