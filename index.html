@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        height: 100%;
+        background: #222;
+      }
+
+      #gameContainer {
+        position: relative;
+        margin: 0 auto;
+        background: #000;
+        touch-action: none;
+      }
+
+      canvas {
+        display: block;
+        background: #000;
+      }
+
+      #gameOverScreen {
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        background-color: #b41412;
+        color: #aee800;
+        text-align: center;
+        font-family: Arial, sans-serif;
+        z-index: 15;
+        box-sizing: border-box;
+        overflow: hidden;
+
+        /* Flexbox for centering content */
+        align-items: center;
+        flex-direction: column;
+      }
+
+      #gameOverContent {
+        margin-top: 100px; /* CONTROL TOP OFFSET HERE */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+      }
+
+      #gameOverScreen h1,
+      #gameOverScreen p {
+        font-weight: bold;
+      }
+
+      #imageWrapper {
+        width: 35vw; /* scale relative to viewport width */
+        max-width: 300px; /* limit for desktop */
+        aspect-ratio: 392 / 500;
+        overflow: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 20px;
+        margin-bottom: 10px;
+      }
+
+      #gameOverImage {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+
+      #gameOverScreen h1 {
+        margin-bottom: 0;
+        font-size: 24px;
+      }
+
+      #finalScore {
+        margin-top: 0;
+        font-size: 24px;
+        margin-bottom: 0px;
+      }
+
+      #expansionPhrase {
+        font-size: 24px;
+        font-weight: bold;
+        margin-top: 0px;
+      }
+
+      #LEGACY {
+        font-size: 24px;
+        font-weight: bold;
+        margin-top: 2px;
+        margin-bottom: 6px;
+      }
+
+      #restartBtn,
+      #downloadBtn {
+        font-size: 18px;
+        font-weight: bold;
+        padding: 10px 20px;
+        background-color: #aee800;
+        color: #000;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        z-index: 20;
+        margin-top: 10px; /* space from previous element */
+        display: none;
+      }
+
+      #restartBtn {
+        top: 1%;
+      }
+
+      #downloadBtn {
+        top: 2%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="gameContainer">
+      <canvas id="gameCanvas"></canvas>
+      <div
+        id="startScreen"
+        style="
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background-color: #000;
+          z-index: 10;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-direction: column;
+        "
+      >
+        <img
+          src="https://subaquatic-legacy.github.io/bubblez/images/Game_BG_1.png"
+          style="
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+          "
+        />
+        <button
+          onclick="startGame()"
+          style="
+            font-size: 24px;
+            padding: 12px 24px;
+            background-color: #aee800;
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+          "
+        >
+          START GAME
+        </button>
+      </div>
+      <div id="gameOverScreen">
+        <div id="gameOverContent">
+          <h1>LEGACY</h1>          
+          <div id="imageWrapper">
+            <img
+              id="gameOverImage"
+              crossorigin="anonymous"
+              src="https://subaquatic-legacy.github.io/bubblez/images/Game_Hercules.png"
+              alt="Game Over Image"
+            />
+          </div>
+          <p id="LEGACY">EXPANDING THE BUBBLENET</p>
+          <p id="LEGACY">♦</p>
+          <p id="expansionPhrase">JUNE 2025</p>
+          <!-- Move buttons here -->
+        </div>
+      </div>
+    </div>
+    <button id="restartBtn" onclick="restartGame()">RESTART</button>
+    <button id="downloadBtn" onclick="downloadScreenshot()">
+      SHARE YOUR SCORE
+    </button>
+
+    <!-- Muted initially -->
+    <audio id="bgMusic" loop muted>
+      <source
+        src="https://subaquatic-legacy.github.io/bubblez/game_background.mp3"
+        type="audio/mpeg"
+      />
+    </audio>
+    <audio id="lifeLostSound">
+      <source
+        src="https://subaquatic-legacy.github.io/bubblez/life_loss.mp3"
+        type="audio/mpeg"
+      />
+    </audio>
+
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script>
+      const bgMusic = document.getElementById("bgMusic")
+      bgMusic.load()
+
+      function enableAudio() {
+        // Allow enabling only once
+        if (bgMusic.muted === false) return
+
+        try {
+          bgMusic.muted = false
+          bgMusic
+            .play()
+            .then(() => {
+              console.log("Audio playback started.")
+            })
+            .catch((error) => {
+              console.warn("Playback failed:", error)
+            })
+        } catch (e) {
+          console.warn("Playback error:", e)
+        }
+
+        // Unlock lifeLostSound for iOS
+        const lifeLostSound = document.getElementById("lifeLostSound")
+        lifeLostSound
+          .play()
+          .then(() => lifeLostSound.pause()) // Immediately pause after unlocking
+          .catch((error) => {
+            console.warn("Life lost sound unlock failed:", error)
+          })
+
+        // Remove all listeners after first trigger
+        document.removeEventListener("touchstart", enableAudio)
+        document.removeEventListener("keydown", enableAudio)
+      }
+      // Must bind directly to user interaction for mobile
+      document.addEventListener("touchstart", enableAudio)
+      document.addEventListener("keydown", enableAudio)
+    </script>
+
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script>
+      const canvas = document.getElementById("gameCanvas")
+      const ctx = canvas.getContext("2d")
+      const restartBtn = document.getElementById("restartBtn")
+      const downloadBtn = document.getElementById("downloadBtn")
+      const gameContainer = document.getElementById("gameContainer")
+      const gameOverScreen = document.getElementById("gameOverScreen")
+      const finalScoreText = document.getElementById("finalScore")
+
+      const baseWidth = 360
+      const baseHeight = 640
+
+      const backgroundImage = new Image()
+      backgroundImage.src =
+        "https://subaquatic-legacy.github.io/bubblez/images/Game_BG_1.png"
+      backgroundImage.crossOrigin = "anonymous"
+
+      const player = {
+        x: 160,
+        y: 550,
+        width: 100,
+        height: 100,
+        speed: 5.0,
+        image: new Image(),
+      }
+      player.image.src =
+        "https://subaquatic-legacy.github.io/bubblez/images/Game_Hero_yellow.png"
+      player.image.crossOrigin = "anonymous"
+
+      const whaleImg = new Image()
+      whaleImg.crossOrigin = "anonymous"
+      whaleImg.src =
+        "https://subaquatic-legacy.github.io/bubblez/images/Game_Lifes_Left_yellow.png"
+
+      const bubbleImage = new Image()
+      bubbleImage.src =
+        "https://subaquatic-legacy.github.io/bubblez/images/Game_Bubble.png"
+      bubbleImage.crossOrigin = "anonymous"
+
+      const redBubbleImage = new Image()
+      redBubbleImage.src =
+        "https://subaquatic-legacy.github.io/bubblez/images/Game_Bubble_10p.png"
+      redBubbleImage.crossOrigin = "anonymous"
+
+      const yellowBubbleImage = new Image()
+      yellowBubbleImage.src =
+        "https://subaquatic-legacy.github.io/bubblez/images/Game_Bubble_yellow.png"
+      yellowBubbleImage.crossOrigin = "anonymous"
+
+      let bubbles = []
+      let score = 0
+      let lives = 3
+      let gameOver = false
+      let bubbleInterval = 2000
+      let lastBubbleTime = Date.now()
+      let lastDifficultyIncrease = Date.now()
+      let bubbleSpeedMultiplier = 1
+      let lastSpeedUpdateTime = Date.now()
+      let bigBall = null
+      let bigBallActive = false
+      let bigBallCaught = false
+
+      function resizeCanvas() {
+        canvas.width = baseWidth
+        canvas.height = baseHeight
+
+        const screenRatio = window.innerWidth / window.innerHeight
+        const gameRatio = baseWidth / baseHeight
+
+        let width, height
+        if (screenRatio > gameRatio) {
+          height = window.innerHeight
+          width = height * gameRatio
+        } else {
+          width = window.innerWidth
+          height = width / gameRatio
+        }
+
+        gameContainer.style.width = width + "px"
+        gameContainer.style.height = height + "px"
+        canvas.style.width = width + "px"
+        canvas.style.height = height + "px"
+        gameOverScreen.style.width = width + "px"
+        gameOverScreen.style.height = height + "px"
+      }
+
+      function createBubble() {
+        const margin = 10
+        const x = margin + Math.random() * (canvas.width - 2 * margin)
+        const isRed = Math.random() < 0.15
+        bubbles.push({
+          x: x,
+          y: 0,
+          radius: 15 + Math.random() * 10,
+          speed: isRed ? 1 : 1 + Math.random() * 1.2,
+          opacity: 0.7 + Math.random() * 0.3,
+          red: isRed,
+        })
+      }
+
+      function update() {
+        if (gameOver) return
+
+        let now = Date.now()
+        if (now - lastBubbleTime > bubbleInterval) {
+          createBubble()
+          lastBubbleTime = now
+        }
+
+        if (now - lastDifficultyIncrease > 10000 && bubbleInterval > 600) {
+          bubbleInterval -= 100
+          lastDifficultyIncrease = now
+        }
+
+        if (now - lastSpeedUpdateTime > 2000) {
+          bubbleSpeedMultiplier += 0.01 // smaller increment
+          lastSpeedUpdateTime = now
+        }
+
+        bubbles.forEach((bubble, index) => {
+          bubble.y += bubble.speed * bubbleSpeedMultiplier
+          if (bubble.y > canvas.height) {
+            bubbles.splice(index, 1)
+            lives--
+            playLifeLostSound()
+            if (lives <= 0) {
+              triggerGameOver()
+            }
+          }
+        })
+
+        bubbles = bubbles.filter((bubble) => {
+          const hit =
+            bubble.x > player.x &&
+            bubble.x < player.x + player.width &&
+            bubble.y + bubble.radius > player.y &&
+            bubble.y < player.y + player.height
+          if (hit) score += bubble.red ? 10 : 1
+          return !hit
+        })
+        if (bigBallActive && bigBall && !bigBallCaught) {
+          bigBall.y += bigBall.speed
+
+          // Check collision with player
+          const dx =
+            bigBall.x + bigBall.radius / 2 - (player.x + player.width / 2)
+          const dy =
+            bigBall.y + bigBall.radius / 2 - (player.y + player.height / 2)
+          const distance = Math.sqrt(dx * dx + dy * dy)
+
+          if (distance < bigBall.radius + player.width / 8) {
+            bigBallCaught = true
+            triggerGameOver() // Replace with your game over logic
+          }
+        }
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+        if (!gameOver) {
+          ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height)
+          ctx.drawImage(
+            player.image,
+            player.x,
+            player.y,
+            player.width,
+            player.height,
+          )
+
+          bubbles.forEach((bubble) => {
+            const size = bubble.radius * 2
+            ctx.save()
+            ctx.globalAlpha = bubble.opacity
+            const img = bubble.red ? redBubbleImage : bubbleImage
+            ctx.drawImage(
+              img,
+              bubble.x - bubble.radius,
+              bubble.y - bubble.radius,
+              size,
+              size,
+            )
+            ctx.restore()
+          })
+
+          ctx.font = "bold 20px Arial"
+          ctx.fillStyle = "#aee800"
+          ctx.fillText("Bubble Catcher", canvas.width - 350, 30)
+          ctx.fillText("Score: " + score, canvas.width - 120, 30)
+
+          for (let i = 0; i < lives; i++) {
+            ctx.drawImage(whaleImg, 10 + i * 40, 40, 35, 35)
+          }
+          if (bigBallActive && bigBall && !bigBallCaught) {
+            ctx.drawImage(
+              yellowBubbleImage,
+              bigBall.x,
+              bigBall.y,
+              bigBall.radius,
+              bigBall.radius,
+            )
+          }
+        }
+      }
+
+      function triggerGameOver() {
+        gameOver = true
+        bubbles = []
+        resizeCanvas() // Ensure alignment
+        gameOverScreen.style.display = "flex"
+        finalScoreText.textContent = "BUBBLE SCORE: " + score
+        restartBtn.style.display = "inline-block"
+        downloadBtn.style.display = "inline-block"
+        bgMusic.pause()
+      }
+
+      function startGame() {
+        setTimeout(() => {
+          bigBall = {
+            x: Math.random() * (canvas.width - 60),
+            y: -60,
+            radius: 80,
+            speed: 0.5,
+          }
+          bigBallActive = true
+        }, 40000) // 50 seconds
+        document.getElementById("startScreen").style.display = "none"
+        gameOverScreen.style.display = "none"
+        bgMusic.currentTime = 0
+        bgMusic.play()
+        enableAudio() // Ensure music starts when game begins
+        resetGame()
+      }
+
+      function restartGame() {
+        gameOver = false
+        gameOverScreen.style.display = "none"
+        restartBtn.style.display = "none"
+        downloadBtn.style.display = "none"
+        bgMusic.currentTime = 0
+        bgMusic.play()
+        resetGame()
+        gameLoop()
+      }
+
+      function resetGame() {
+        gameOver = false
+        player.x = 160
+        player.y = 550
+        lives = 3
+        score = 0
+        bubbles = []
+        bubbleInterval = 2000
+        lastBubbleTime = Date.now()
+        lastDifficultyIncrease = Date.now()
+        bubbleSpeedMultiplier = 1
+        lastSpeedUpdateTime = Date.now()
+      }
+
+      function downloadScreenshot() {
+        restartBtn.style.display = "none"
+        downloadBtn.style.display = "none"
+
+        const rect = gameOverScreen.getBoundingClientRect()
+        const scale = window.devicePixelRatio || 1
+
+        html2canvas(gameOverScreen, {
+          useCORS: true,
+          width: rect.width,
+          height: rect.height,
+          scale: scale,
+        }).then((canvasShot) => {
+          const link = document.createElement("a")
+          link.download = "bubblecatcher_score_story.png"
+          link.href = canvasShot.toDataURL()
+          link.click()
+
+          restartBtn.style.display = "inline-block"
+          downloadBtn.style.display = "inline-block"
+        })
+      }
+
+      function playLifeLostSound() {
+        lifeLostSound.pause() // Stop any current playback
+        lifeLostSound.currentTime = 0 // Reset to start
+        lifeLostSound.play().catch((e) => {
+          console.warn("Life lost sound error:", e)
+        })
+      }
+
+      function gameLoop() {
+        if (!gameOver) {
+          update()
+          draw()
+          requestAnimationFrame(gameLoop)
+        }
+      }
+
+      window.addEventListener("resize", resizeCanvas)
+      resizeCanvas()
+
+      let keys = {}
+      document.addEventListener("keydown", (e) => (keys[e.key] = true))
+      document.addEventListener("keyup", (e) => (keys[e.key] = false))
+
+      let isTouching = false
+      canvas.addEventListener("touchstart", function (e) {
+        const touch = e.touches[0]
+        const rect = canvas.getBoundingClientRect()
+        const touchX = touch.clientX - rect.left
+        if (touchX >= player.x && touchX <= player.x + player.width) {
+          isTouching = true
+        }
+      })
+      canvas.addEventListener(
+        "touchmove",
+        function (e) {
+          if (isTouching) {
+            const touch = e.touches[0]
+            const rect = canvas.getBoundingClientRect()
+            const touchX = touch.clientX - rect.left
+            player.x = touchX - player.width / 2
+            if (player.x < 0) player.x = 0
+            if (player.x + player.width > canvas.width)
+              player.x = canvas.width - player.width
+          }
+          e.preventDefault()
+        },
+        { passive: false },
+      )
+      canvas.addEventListener("touchend", function () {
+        isTouching = false
+      })
+
+      function movePlayer() {
+        if (!gameOver) {
+          if (keys["ArrowLeft"] && player.x > 0) player.x -= player.speed
+          if (keys["ArrowRight"] && player.x + player.width < canvas.width)
+            player.x += player.speed
+        }
+        requestAnimationFrame(movePlayer)
+      }
+
+      gameLoop()
+      movePlayer()
+    </script>
+  </body>
+</html>
