@@ -407,8 +407,9 @@
         if (bigBallExist && bigBall && !bigBallCaught) {
           bigBall.y += bigBall.speed
           bigBall.radius += 0.05
-          if (bigBall.y + bigBall.radius >= 80) {
+          if (bigBall.y + bigBall.radius >= 10 && !bigBallActive) {
             bigBallActive = true
+            bubbles = []
           }
 
           // Check collision with player
