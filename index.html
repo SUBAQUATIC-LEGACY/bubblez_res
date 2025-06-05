@@ -483,6 +483,7 @@
         bgMusic.play()
         enableAudio() // Ensure music starts when game begins
         resetGame()
+        gameLoop()
       }
 
       function restartGame() {
@@ -594,7 +595,6 @@
         requestAnimationFrame(movePlayer)
       }
 
-      gameLoop()
       movePlayer()
     </script>
   </body>
