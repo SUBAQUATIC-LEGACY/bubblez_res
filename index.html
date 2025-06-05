@@ -398,7 +398,7 @@
             const hit =
               bubble.x > player.x &&
               bubble.x < player.x + player.width &&
-              bubble.y + bubble.radius > player.y &&
+              bubble.y > player.y &&
               bubble.y < player.y + player.height
             if (hit) score += bubble.red ? 10 : 1
             return !hit
